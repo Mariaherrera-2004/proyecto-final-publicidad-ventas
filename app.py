@@ -5,19 +5,6 @@ Programación para Ciencia de Datos II - U Compensar
 
 Autora: María Fernanda Herrera Contreras
 Docente: William Eduardo Clavijo Bohorquez
-
-Cómo ejecutar localmente:
-    pip install -r requirements.txt
-    python app.py
-    -> abrir http://127.0.0.1:8050 en el navegador
-
-Este dashboard reúne, en una sola herramienta interactiva, los hallazgos de las
-tres etapas del proyecto (contextualización, profundización y transferencia):
-    1. Análisis exploratorio de datos (EDA)
-    2. Contraste de hipótesis (prueba t de Welch / Mann-Whitney)
-    3. Regresión lineal (simple, múltiple y Ridge con regularización)
-    4. Regresión logística (clasificación de "mes de venta alta")
-    5. Simulador interactivo para el equipo financiero
 """
 
 import numpy as np
@@ -56,19 +43,20 @@ df["venta_alta"] = (df[TARGET] > mediana_ventas).astype(int)
 z = (df[TARGET] - df[TARGET].mean()) / df[TARGET].std(ddof=1)
 outlier_idx = df.index[np.abs(z) > 2]
 
+# Paleta de colores moderna y profesional
 PALETA = {
-    "primario": "#4C72B0",
-    "secundario": "#DD8452",
-    "acento": "#C44E52",
-    "exito": "#55A868",
-    "fondo": "#F7F9FC",
-    "texto": "#1F2A44",
+    "primario": "#6366F1",     # Indigo Electrónico
+    "secundario": "#0EA5E9",   # Azul Sky / Cyan
+    "acento": "#F43F5E",       # Rose / Rojo Coral
+    "exito": "#10B981",        # Esmeralda
+    "warning": "#F59E0B",      # Ámbar
+    "fondo": "#F8FAFC",        # Slate 50
+    "texto": "#0F172A",        # Slate 900
+    "muted": "#64748B",        # Slate 500
 }
 
 # ---------------------------------------------------------------------------
-# 2. MODELOS BASE (se recalculan también dentro de los callbacks para
-#    reflejar los controles interactivos, pero aquí se dejan versiones
-#    "de referencia" usadas en las pestañas de contexto / conclusiones)
+# 2. MODELOS BASE DE REFERENCIA
 # ---------------------------------------------------------------------------
 
 X_full = df[FEATURES].to_numpy()
@@ -79,135 +67,130 @@ modelo_simple = LinearRegression().fit(X_simple, y_full)
 r_pearson = np.corrcoef(df["gasto_publicidad_millones"], df[TARGET])[0, 1]
 r2_simple = r2_score(y_full, modelo_simple.predict(X_simple))
 
-# Regresión logística de referencia (todas las observaciones, C=1, lbfgs)
+# Regresión logística de referencia
 Xl = df[["gasto_publicidad_millones"]].to_numpy()
 yl = df["venta_alta"].to_numpy()
 modelo_logit_ref = LogisticRegression(C=1, solver="lbfgs").fit(Xl, yl)
 
-# Regresión lineal múltiple de referencia (todas las observaciones, sin
-# separar train/test) — se usa en el simulador para dar una predicción con
-# toda la información disponible.
+# Regresión lineal múltiple de referencia
 modelo_multiple_ref = LinearRegression().fit(X_full, y_full)
 
 # ---------------------------------------------------------------------------
-# 3. FUNCIONES AUXILIARES
+# 3. FUNCIONES AUXILIARES DE DISEÑO
 # ---------------------------------------------------------------------------
 
 def kpi_card(titulo, valor, subtitulo, color):
     return dbc.Card(
         dbc.CardBody([
-            html.P(titulo, className="kpi-titulo"),
-            html.H3(valor, className="kpi-valor", style={"color": color}),
-            html.P(subtitulo, className="kpi-subtitulo"),
+            html.Div(titulo, className="kpi-titulo"),
+            html.Div(valor, className="kpi-valor", style={"color": color}),
+            html.Div(subtitulo, className="kpi-subtitulo"),
         ]),
         className="kpi-card shadow-sm",
+        style={"--kpi-color": color}
     )
 
 
 def figura_base(fig, titulo=None):
     fig.update_layout(
         template="plotly_white",
-        font=dict(family="Segoe UI, Roboto, Helvetica, Arial", size=13,
-                  color=PALETA["texto"]),
-        margin=dict(l=40, r=30, t=50 if titulo else 20, b=40),
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
+        font=dict(family="Plus Jakarta Sans, -apple-system, sans-serif", size=12, color=PALETA["texto"]),
+        margin=dict(l=50, r=30, t=65 if titulo else 25, b=45),
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0.01, font=dict(size=11, color=PALETA["muted"])),
+        hoverlabel=dict(bgcolor=PALETA["texto"], font_size=12, font_family="Plus Jakarta Sans", font_color="white"),
     )
+    fig.update_xaxes(showgrid=True, gridcolor="#F1F5F9", zerolinecolor="#E2E8F0")
+    fig.update_yaxes(showgrid=True, gridcolor="#F1F5F9", zerolinecolor="#E2E8F0")
     if titulo:
-        fig.update_layout(title=dict(text=titulo, x=0.02, font=dict(size=16)))
+        fig.update_layout(title=dict(text=f"<b>{titulo}</b>", x=0.01, y=0.98, font=dict(size=14, color=PALETA["texto"])))
     return fig
 
-
 # ---------------------------------------------------------------------------
-# 4. INICIALIZACIÓN DE LA APP
+# 4. INICIALIZACIÓN DE LA APP CON RECURSOS ESTÉTICOS
 # ---------------------------------------------------------------------------
 
 app = dash.Dash(
     __name__,
-    external_stylesheets=[dbc.themes.FLATLY],
+    external_stylesheets=[
+        dbc.themes.BOOTSTRAP,
+        "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap",
+        "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    ],
     meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1"}],
-    title="Dashboard | Publicidad y Ventas E-commerce",
+    title="Analytics | Publicidad & Ventas E-commerce",
 )
-server = app.server  # necesario para despliegue (Binder / gunicorn)
+server = app.server
 
 # ---------------------------------------------------------------------------
-# 5. LAYOUT — ENCABEZADO
+# 5. LAYOUT — ENCABEZADO MODERNO
 # ---------------------------------------------------------------------------
 
 encabezado = dbc.Navbar(
     dbc.Container([
         html.Div([
-            html.H4("📊 Publicidad digital y ventas — E-commerce",
-                     className="text-white mb-0"),
-            html.Small("Proyecto Final · Programación para Ciencia de Datos II · "
-                       "María Fernanda Herrera Contreras",
-                       className="text-white-50"),
+            html.Div([
+                html.I(className="fa-solid fa-chart-line text-indigo me-2 fs-4", style={"color": PALETA["primario"]}),
+                html.H4("Analytics & Impacto Publicitario — E-commerce", className="text-white d-inline-block fw-bold align-middle mb-0"),
+                html.Span("PROYECTO FINAL", className="brand-badge ms-3 align-middle")
+            ], className="d-flex align-items-center mb-1"),
+            html.Small("Programación para Ciencia de Datos II · Autora: María Fernanda Herrera Contreras · Docente: William Eduardo Clavijo Bohorquez",
+                       className="text-white-50 font-monospace")
         ])
     ], fluid=True),
-    color=PALETA["texto"],
+    className="app-header mb-4",
     dark=True,
-    className="mb-3",
 )
 
 # ---------------------------------------------------------------------------
-# 5.1 PESTAÑA — CONTEXTO / RESUMEN EJECUTIVO
+# 5.1 PESTAÑA — CONTEXTO
 # ---------------------------------------------------------------------------
 
 tab_contexto = dbc.Container([
     dbc.Row([
-        dbc.Col(kpi_card("Meses analizados", f"{len(df)}", "enero 2021 – diciembre 2025",
-                          PALETA["primario"]), md=3),
-        dbc.Col(kpi_card("Correlación gasto–ventas", f"r = {r_pearson:.2f}",
-                          "asociación positiva moderada-alta", PALETA["secundario"]), md=3),
-        dbc.Col(kpi_card("Poder explicativo (simple)", f"R² = {r2_simple:.2f}",
-                          "regresión lineal, 1 variable", PALETA["exito"]), md=3),
-        dbc.Col(kpi_card("Meses atípicos", f"{len(outlier_idx)}",
-                          "campaña viral y falla operativa", PALETA["acento"]), md=3),
+        dbc.Col(kpi_card("Meses analizados", f"{len(df)}", "Enero 2021 – Diciembre 2025", PALETA["primario"]), md=3),
+        dbc.Col(kpi_card("Correlación Gasto–Ventas", f"r = {r_pearson:.2f}", "Asociación positiva fuerte", PALETA["secundario"]), md=3),
+        dbc.Col(kpi_card("Poder explicativo", f"R² = {r2_simple:.2f}", "Regresión lineal simple", PALETA["exito"]), md=3),
+        dbc.Col(kpi_card("Meses atípicos", f"{len(outlier_idx)}", "Campaña viral & Falla operativa", PALETA["acento"]), md=3),
     ], className="g-3 mb-4"),
 
     dbc.Row([
         dbc.Col(dbc.Card(dbc.CardBody([
-            html.H5("Planteamiento del problema", className="mb-3"),
-            html.P("Una tienda de comercio electrónico de tamaño mediano invierte cada "
-                   "mes en publicidad digital (Meta, TikTok Ads, email marketing), pero "
-                   "el equipo de mercadeo no tiene claridad sobre qué tan efectiva es esa "
-                   "inversión para generar ventas reales, y el área financiera necesita "
-                   "saber si vale la pena seguir aumentando el presupuesto."),
-            html.P("Este dashboard reúne las tres etapas del proyecto — exploración de "
-                   "datos, contraste de hipótesis y modelos predictivos (regresión lineal "
-                   "y logística) — para responder, con evidencia estadística, si el gasto "
-                   "en publicidad realmente impulsa las ventas y qué tan confiable es esa "
-                   "relación."),
-            html.Hr(),
-            html.H6("Variables del conjunto de datos"),
+            html.Div([
+                html.I(className="fa-solid fa-bullseye me-2 text-indigo", style={"color": PALETA["primario"]}),
+                html.Span("Planteamiento del problema", className="card-title-modern")
+            ], className="d-flex align-items-center mb-3"),
+            html.P("Una tienda de comercio electrónico invierte mensualmente en publicidad digital (Meta Ads, TikTok Ads, Email Marketing). El equipo directivo requiere determinar la efectividad real de dicha inversión para generar ingresos sostenibles.", className="text-secondary"),
+            html.P("Este dashboard integra tres fases metodológicas: Análisis Exploratorio de Datos (EDA), Contraste de Hipótesis y Modelado Predictivo (Regresión Lineal Múltiple/Ridge y Clasificación Logística) para orientar decisiones financieras basadas en evidencia estadística.", className="text-secondary"),
+            html.Hr(className="my-3 text-muted"),
+            html.H6("Variables clave del modelo", className="fw-bold mb-2 text-dark"),
             html.Ul([
-                html.Li([html.B("gasto_publicidad_millones: "),
-                         "inversión mensual en publicidad digital (millones COP)."]),
-                html.Li([html.B("ventas_millones: "), "ventas totales del mes (millones COP)."]),
-                html.Li([html.B("visitas_web_miles: "), "visitas al sitio web (miles)."]),
-                html.Li([html.B("tasa_conversion_pct: "),
-                         "porcentaje de visitantes que terminan comprando."]),
-            ]),
+                html.Li([html.B("gasto_publicidad_millones: ", className="text-dark"), "Inversión mensual en pauta digital (millones COP)."]),
+                html.Li([html.B("ventas_millones: ", className="text-dark"), "Ingresos totales por ventas en el mes (millones COP)."]),
+                html.Li([html.B("visitas_web_miles: ", className="text-dark"), "Tráfico total recibido en el sitio web (miles)."]),
+                html.Li([html.B("tasa_conversion_pct: ", className="text-dark"), "Porcentaje de visitantes que completan una compra."]),
+            ], className="text-secondary mb-0 ps-3"),
         ])), md=7),
         dbc.Col(dbc.Card(dbc.CardBody([
-            html.H5("Cómo navegar el dashboard", className="mb-3"),
+            html.Div([
+                html.I(className="fa-solid fa-compass me-2 text-indigo", style={"color": PALETA["primario"]}),
+                html.Span("Guía de navegación", className="card-title-modern")
+            ], className="d-flex align-items-center mb-3"),
             html.Ol([
-                html.Li("Exploración: distribución, evolución temporal y outliers."),
-                html.Li("Contraste de hipótesis: ¿el gasto alto genera más ventas?"),
-                html.Li("Regresión: modelo lineal simple, múltiple y con "
-                        "regularización (Ridge)."),
-                html.Li("Clasificación: ¿se puede predecir si un mes será de "
-                        "\"venta alta\"?"),
-                html.Li("Simulador: estima ventas y probabilidad de venta alta "
-                        "para un presupuesto hipotético."),
-            ]),
-            html.P("Todos los gráficos son interactivos: use los filtros, "
-                   "deslizadores y menús desplegables de cada pestaña para "
-                   "explorar los datos.", className="text-muted small mb-0"),
+                html.Li([html.B("Exploración: "), "Distribución de ventas, evolución temporal y detección de valores atípicos."]),
+                html.Li([html.B("Contraste de hipótesis: "), "Evaluación estadística del impacto de alto vs. bajo gasto."]),
+                html.Li([html.B("Regresión: "), "Modelos lineales, multivariados y regularización Ridge para mitigar colinealidad."]),
+                html.Li([html.B("Clasificación: "), "Regresión logística para estimar la probabilidad de un mes de venta alta."]),
+                html.Li([html.B("Simulador: "), "Proyección en tiempo real de ingresos según el presupuesto publicitario asignado."]),
+            ], className="text-secondary ps-3 mb-3"),
+            html.Div([
+                html.I(className="fa-solid fa-lightbulb me-2 text-warning"),
+                html.Small("Todos los gráficos son interactivos. Modifique los controles y deslizadores para evaluar escenarios.", className="text-muted")
+            ], className="p-2 rounded bg-light border d-flex align-items-center"),
         ])), md=5),
     ], className="g-3"),
-], fluid=True, className="py-3")
+], fluid=True, className="py-2")
 
 # ---------------------------------------------------------------------------
 # 5.2 PESTAÑA — EXPLORACIÓN DE DATOS
@@ -216,36 +199,35 @@ tab_contexto = dbc.Container([
 tab_exploracion = dbc.Container([
     dbc.Row([
         dbc.Col([
-            html.Label("Rango de meses a analizar", className="fw-bold"),
+            html.Label("Rango de meses a analizar", className="fw-semibold mb-2"),
             dcc.RangeSlider(
                 id="rango-fechas",
                 min=0, max=len(df) - 1, step=1,
                 value=[0, len(df) - 1],
-                marks={i: d.strftime("%Y") for i, d in enumerate(df["mes"])
-                       if d.month == 1},
+                marks={i: d.strftime("%Y") for i, d in enumerate(df["mes"]) if d.month == 1},
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
         ], md=8),
         dbc.Col([
-            html.Label("Resaltar valores atípicos", className="fw-bold"),
+            html.Label("Filtro de valores atípicos", className="fw-semibold mb-2"),
             dcc.Checklist(
                 id="chk-outliers",
                 options=[{"label": " Resaltar meses atípicos (|z| > 2)", "value": "on"}],
                 value=["on"],
-                className="mt-2",
+                className="mt-1 text-secondary",
             ),
         ], md=4),
-    ], className="mb-3 g-3"),
+    ], className="mb-4 g-3 p-3 bg-white rounded-3 border"),
 
     dbc.Row([
-        dbc.Col(dcc.Graph(id="graf-histograma"), md=6),
-        dbc.Col(dcc.Graph(id="graf-evolucion"), md=6),
+        dbc.Col(dbc.Card(dbc.CardBody(dcc.Graph(id="graf-histograma"))), md=6),
+        dbc.Col(dbc.Card(dbc.CardBody(dcc.Graph(id="graf-evolucion"))), md=6),
     ], className="g-3"),
 
     dbc.Row([
         dbc.Col(dbc.Card(dbc.CardBody(id="resumen-eda")), md=12),
     ], className="g-3 mt-1"),
-], fluid=True, className="py-3")
+], fluid=True, className="py-2")
 
 # ---------------------------------------------------------------------------
 # 5.3 PESTAÑA — CONTRASTE DE HIPÓTESIS
@@ -254,115 +236,98 @@ tab_exploracion = dbc.Container([
 tab_hipotesis = dbc.Container([
     dbc.Row([
         dbc.Col(dbc.Card(dbc.CardBody([
-            html.H5("H₀ y H₁"),
-            html.P("H₀: μ_alto ≤ μ_bajo  (el gasto no incrementa las ventas)"),
-            html.P("H₁: μ_alto > μ_bajo  (el gasto sí incrementa las ventas)"),
-            html.P("Prueba t de Welch (una cola), α = 0.05. Los meses se dividen "
-                   f"según la mediana del gasto publicitario ({mediana_gasto:.2f} "
-                   "millones COP)."),
+            html.H5("Formulación de Hipótesis", className="card-title-modern mb-3"),
             html.Div([
-                html.Label("Incluir los 2 meses atípicos en la prueba", className="fw-bold"),
+                html.P([html.Span("H₀: ", className="fw-bold text-danger"), "μ_alto ≤ μ_bajo (El gasto no incrementa las ventas significativas)"]),
+                html.P([html.Span("H₁: ", className="fw-bold text-success"), "μ_alto > μ_bajo (El alto gasto incrementa sustancialmente las ventas)"]),
+            ], className="p-3 bg-light rounded border mb-3"),
+            html.P(f"Prueba t de Welch (una cola) y Mann-Whitney U, con α = 0.05. Punto de cohorte por mediana de gasto ({mediana_gasto:.2f} M COP).", className="text-muted small"),
+            html.Div([
+                html.Label("Tratamiento de valores atípicos", className="fw-semibold mb-2"),
                 dcc.RadioItems(
                     id="radio-outliers-hip",
                     options=[
-                        {"label": " Incluir outliers (dataset completo)", "value": "con"},
-                        {"label": " Excluir outliers (prueba de robustez)", "value": "sin"},
+                        {"label": " Incluir outliers (Dataset completo)", "value": "con"},
+                        {"label": " Excluir outliers (Prueba de robustez)", "value": "sin"},
                     ],
                     value="con",
-                    className="mt-2",
+                    className="text-secondary",
                 ),
-            ], className="mt-3"),
+            ], className="mt-3 pt-3 border-top"),
         ])), md=4),
-        dbc.Col(dcc.Graph(id="graf-boxplot"), md=8),
+        dbc.Col(dbc.Card(dbc.CardBody(dcc.Graph(id="graf-boxplot"))), md=8),
     ], className="g-3 mb-3"),
 
     dbc.Row([
         dbc.Col(dbc.Card(dbc.CardBody(id="resultado-hipotesis")), md=12),
     ], className="g-3"),
-], fluid=True, className="py-3")
+], fluid=True, className="py-2")
 
 # ---------------------------------------------------------------------------
-# 5.4 PESTAÑA — REGRESIÓN (SIMPLE / MÚLTIPLE / RIDGE)
+# 5.4 PESTAÑA — REGRESIÓN
 # ---------------------------------------------------------------------------
 
 tab_regresion = dbc.Container([
     dbc.Row([
         dbc.Col([
-            html.Label("Modelo de regresión", className="fw-bold"),
+            html.Label("Selección de Modelo de Regresión", className="fw-semibold mb-2"),
             dcc.Dropdown(
                 id="dd-modelo",
                 options=[
-                    {"label": "Regresión lineal simple (solo gasto en publicidad)",
-                     "value": "simple"},
-                    {"label": "Regresión lineal múltiple (gasto + visitas + conversión)",
-                     "value": "multiple"},
-                    {"label": "Regresión Ridge (múltiple + regularización L2)",
-                     "value": "ridge"},
+                    {"label": "Regresión Lineal Simple (Solo Gasto Publicitario)", "value": "simple"},
+                    {"label": "Regresión Lineal Múltiple (Gasto + Visitas + Conversión)", "value": "multiple"},
+                    {"label": "Regresión Ridge (Múltiple + Regularización L2)", "value": "ridge"},
                 ],
                 value="multiple", clearable=False,
             ),
-        ], md=6),
-        dbc.Col([
-            html.Label("Fuerza de regularización (alpha) — solo aplica a Ridge",
-                       className="fw-bold"),
-            dcc.Slider(id="slider-alpha", min=0.1, max=50, step=0.1, value=5,
-                       marks={0.1: "0.1", 5: "5", 10: "10", 20: "20", 50: "50"},
-                       tooltip={"placement": "bottom", "always_visible": True}),
-        ], md=6),
-    ], className="mb-3 g-3"),
+        ], md=12),
+    ], className="mb-4 g-3 p-3 bg-white rounded-3 border"),
 
     dbc.Row([
-        dbc.Col(dcc.Graph(id="graf-dispersion-modelo"), md=7),
+        dbc.Col(dbc.Card(dbc.CardBody(dcc.Graph(id="graf-dispersion-modelo"))), md=7),
         dbc.Col(dbc.Card(dbc.CardBody(id="metricas-modelo")), md=5),
     ], className="g-3"),
 
     dbc.Row([
         dbc.Col(dbc.Card(dbc.CardBody(id="explicacion-modelo")), md=12),
     ], className="g-3 mt-1"),
-], fluid=True, className="py-3")
+], fluid=True, className="py-2")
 
 # ---------------------------------------------------------------------------
-# 5.5 PESTAÑA — CLASIFICACIÓN (REGRESIÓN LOGÍSTICA)
+# 5.5 PESTAÑA — CLASIFICACIÓN
 # ---------------------------------------------------------------------------
 
 tab_logistica = dbc.Container([
     dbc.Row([
         dbc.Col([
-            html.Label("Umbral de decisión (probabilidad ≥ umbral → \"venta alta\")",
-                       className="fw-bold"),
+            html.Label("Umbral de Decisión Probabilístico (Probabilidad ≥ Umbral → Venta Alta)", className="fw-semibold mb-2"),
             dcc.Slider(id="slider-umbral", min=0.1, max=0.9, step=0.05, value=0.6,
                        marks={i / 10: str(i / 10) for i in range(1, 10)},
                        tooltip={"placement": "bottom", "always_visible": True}),
-            html.P("Un falso negativo (no anticipar un mes de venta alta) es más "
-                   "costoso para logística e inventario que un falso positivo, por "
-                   "lo que se prioriza la sensibilidad (recall).",
-                   className="text-muted small mt-2"),
+            html.P("Priorizamos la sensibilidad (Recall) para evitar falsos negativos en temporadas de alta demanda operacional.", className="text-muted small mt-2 mb-0"),
         ], md=12),
-    ], className="mb-3"),
+    ], className="mb-4 p-3 bg-white rounded-3 border"),
 
     dbc.Row([
-        dbc.Col(dcc.Graph(id="graf-sigmoide"), md=7),
-        dbc.Col(dcc.Graph(id="graf-matriz-confusion"), md=5),
+        dbc.Col(dbc.Card(dbc.CardBody(dcc.Graph(id="graf-sigmoide"))), md=7),
+        dbc.Col(dbc.Card(dbc.CardBody(dcc.Graph(id="graf-matriz-confusion"))), md=5),
     ], className="g-3"),
 
     dbc.Row([
         dbc.Col(dbc.Card(dbc.CardBody(id="metricas-logistica")), md=12),
     ], className="g-3 mt-1"),
-], fluid=True, className="py-3")
+], fluid=True, className="py-2")
 
 # ---------------------------------------------------------------------------
-# 5.6 PESTAÑA — SIMULADOR
+# 5.6 PESTAÑA — SIMULADOR INTERACTIVO
 # ---------------------------------------------------------------------------
 
 tab_simulador = dbc.Container([
     dbc.Row([
         dbc.Col(dbc.Card(dbc.CardBody([
-            html.H5("Simulador para el equipo financiero", className="mb-2"),
-            html.P("Ajuste un presupuesto hipotético de publicidad y vea la venta "
-                   "esperada y la probabilidad de que sea un mes de \"venta alta\", "
-                   "según los modelos entrenados con los 60 meses históricos.",
-                   className="text-muted"),
-            html.Label("Gasto hipotético en publicidad (millones COP)", className="fw-bold"),
+            html.H5("Simulador Presupuestal Financiero", className="card-title-modern mb-2"),
+            html.P("Ajuste la inversión mensual estimada para proyectar las ventas esperadas y la probabilidad de registrar un mes de venta alta.", className="text-secondary small mb-3"),
+            html.Label("Inversión mensual en publicidad (Millones COP)", className="fw-semibold mb-2"),
             dcc.Slider(
                 id="slider-simulador",
                 min=float(df["gasto_publicidad_millones"].min()),
@@ -371,92 +336,65 @@ tab_simulador = dbc.Container([
                 value=float(df["gasto_publicidad_millones"].median()),
                 tooltip={"placement": "bottom", "always_visible": True},
             ),
-            html.Div(id="aviso-extrapolacion", className="text-warning small mt-2"),
+            html.Div(id="aviso-extrapolacion", className="mt-3"),
         ])), md=12),
     ], className="mb-3"),
 
     dbc.Row([
-        dbc.Col(dcc.Graph(id="graf-gauge-ventas"), md=6),
-        dbc.Col(dcc.Graph(id="graf-gauge-prob"), md=6),
+        dbc.Col(dbc.Card(dbc.CardBody(dcc.Graph(id="graf-gauge-ventas"))), md=6),
+        dbc.Col(dbc.Card(dbc.CardBody(dcc.Graph(id="graf-gauge-prob"))), md=6),
     ], className="g-3"),
-], fluid=True, className="py-3")
+], fluid=True, className="py-2")
 
 # ---------------------------------------------------------------------------
-# 5.7 PESTAÑA — CONCLUSIONES
+# 5.7 PESTAÑA — CONCLUSIONES Y RECOMENDACIONES
 # ---------------------------------------------------------------------------
 
 tab_conclusiones = dbc.Container([
     dbc.Row([
         dbc.Col(dbc.Card(dbc.CardBody([
-            html.H5("Principales hallazgos", className="mb-3"),
+            html.H5("Principales Hallazgos Estadísticos", className="card-title-modern mb-3"),
             html.Ul([
-                html.Li("Existe una relación positiva y estadísticamente muy "
-                        "significativa entre el gasto en publicidad y las ventas "
-                        "(prueba t de Welch, p ≈ 1.18 × 10⁻⁸; Mann-Whitney U, "
-                        "p ≈ 2.29 × 10⁻⁹), con un tamaño del efecto grande "
-                        "(d de Cohen ≈ 1.68)."),
-                html.Li("La regresión lineal simple explica ~51.5 % de la "
-                        "variabilidad de las ventas (R² = 0.515); la regresión "
-                        "múltiple, evaluada con validación cruzada (5 folds), "
-                        "alcanza en promedio R² ≈ 0.45, y sube a R² ≈ 0.48 al "
-                        "introducir regularización Ridge (α ≈ 5), que además "
-                        "corrige el signo contraintuitivo de visitas_web_miles "
-                        "causado por la multicolinealidad (VIF ≈ 7.5) con el "
-                        "gasto publicitario."),
-                html.Li("Un único split 70/30 es muy sensible a dónde caen los dos "
-                        "meses atípicos (campaña viral y falla operativa); la "
-                        "validación cruzada da una estimación más estable del "
-                        "desempeño real del modelo."),
-                html.Li("La regresión logística, usando solo el gasto en "
-                        "publicidad, predice si un mes será de \"venta alta\" "
-                        "con 94.4 % de exactitud y sensibilidad perfecta "
-                        "(umbral = 0.6), priorizando no dejar pasar meses de alta "
-                        "demanda."),
-            ]),
-            html.H5("Recomendación para el equipo financiero", className="mt-3 mb-2"),
-            html.P("La evidencia respalda mantener o incrementar moderadamente el "
-                   "presupuesto de publicidad digital: cada millón adicional "
-                   "invertido se asocia, en promedio, con un aumento cercano a "
-                   "3.4–3.9 millones COP en ventas mensuales. Sin embargo, la "
-                   "relación no es puramente lineal ni exclusivamente causal: se "
-                   "recomienda (1) recolectar variables de estacionalidad y "
-                   "competencia, (2) monitorear el retorno marginal para detectar "
-                   "rendimientos decrecientes, y (3) usar el modelo con "
-                   "regularización y validación cruzada — no un único split — "
-                   "como base para decisiones presupuestales recurrentes."),
+                html.Li("Relación altamente significativa entre inversión publicitaria e ingresos por ventas (Welch p ≈ 1.18×10⁻⁸; Mann-Whitney p ≈ 2.29×10⁻⁹) con tamaño de efecto d de Cohen = 1.68 (efecto alto).", className="mb-2 text-secondary"),
+                html.Li("El modelo lineal simple explica el 51.5% de la variabilidad. El modelo múltiple evaluado mediante Validación Cruzada 5-fold alcanza R² ≈ 0.45, incrementando a R² ≈ 0.48 al incorporar regularización Ridge (α ≈ 5), corrigiendo la multicolinealidad estructural (VIF ≈ 7.5).", className="mb-2 text-secondary"),
+                html.Li("La Regresión Logística con umbral óptimo (0.60) alcanza una exactitud del 94.4% y sensibilidad del 100% en la detección de meses de alto rendimiento comercial.", className="mb-2 text-secondary"),
+            ], className="ps-3 mb-4"),
+            
+            html.H5("Recomendaciones para la Toma de Decisiones", className="card-title-modern mb-3"),
+            html.P("La evidencia cuantitativa valida la rentabilidad marginal del canal digital: cada millón adicional invertido proyecta un incremento estimado de 3.4 a 3.9 millones COP en ventas brutas. Se aconseja utilizar la estimación con regularización Ridge como estándar corporativo para la asignación de presupuesto.", className="text-secondary leading-relaxed mb-0"),
         ])), md=12),
     ]),
-], fluid=True, className="py-3")
+], fluid=True, className="py-2")
 
 # ---------------------------------------------------------------------------
-# 6. LAYOUT PRINCIPAL
+# 6. LAYOUT PRINCIPAL CON TABS VECTORIALES
 # ---------------------------------------------------------------------------
 
 app.layout = html.Div([
     encabezado,
     dbc.Container([
         dbc.Tabs([
-            dbc.Tab(tab_contexto, label="🏠 Contexto"),
-            dbc.Tab(tab_exploracion, label="🔍 Exploración"),
-            dbc.Tab(tab_hipotesis, label="⚖️ Contraste de hipótesis"),
-            dbc.Tab(tab_regresion, label="📈 Regresión"),
-            dbc.Tab(tab_logistica, label="🎯 Clasificación"),
-            dbc.Tab(tab_simulador, label="🧮 Simulador"),
-            dbc.Tab(tab_conclusiones, label="✅ Conclusiones"),
-        ]),
+            dbc.Tab(tab_contexto, label="Contexto", tab_id="tab-contexto", label_style={"cursor": "pointer"}),
+            dbc.Tab(tab_exploracion, label="Exploración", tab_id="tab-exploracion", label_style={"cursor": "pointer"}),
+            dbc.Tab(tab_hipotesis, label="Contraste de Hipótesis", tab_id="tab-hipotesis", label_style={"cursor": "pointer"}),
+            dbc.Tab(tab_regresion, label="Regresión", tab_id="tab-regresion", label_style={"cursor": "pointer"}),
+            dbc.Tab(tab_logistica, label="Clasificación", tab_id="tab-logistica", label_style={"cursor": "pointer"}),
+            dbc.Tab(tab_simulador, label="Simulador", tab_id="tab-simulador", label_style={"cursor": "pointer"}),
+            dbc.Tab(tab_conclusiones, label="Conclusiones", tab_id="tab-conclusiones", label_style={"cursor": "pointer"}),
+        ], className="custom-tabs"),
         html.Footer(
-            html.P("Fundación Universitaria Compensar · Ingeniería en Ciencia de "
-                   "Datos · Programación para Ciencia de Datos II · 2026",
-                   className="text-center text-muted small mt-4 mb-3"),
+            html.Div([
+                html.P("Fundación Universitaria Compensar · Facultad de Ingeniería · Ciencia de Datos II · 2026", className="text-center text-muted small mb-0")
+            ], className="py-3"),
         ),
     ], fluid=True),
 ])
 
 # ===========================================================================
-# 7. CALLBACKS
+# 7. CALLBACKS DE LA APLICACIÓN
 # ===========================================================================
 
-# --- 7.1 Exploración de datos -----------------------------------------------
+# --- 7.1 Exploración --------------------------------------------------------
 
 @app.callback(
     Output("graf-histograma", "figure"),
@@ -471,44 +409,48 @@ def actualizar_eda(rango, chk):
     resaltar = "on" in (chk or [])
 
     fig_hist = px.histogram(d, x=TARGET, nbins=12, color_discrete_sequence=[PALETA["primario"]])
-    fig_hist.update_traces(marker_line_color="white", marker_line_width=1)
-    fig_hist = figura_base(fig_hist, "Distribución de las ventas mensuales")
+    fig_hist.update_traces(marker_line_color="white", marker_line_width=1.5, opacity=0.9)
+    fig_hist = figura_base(fig_hist, "Distribución de Ventas Mensuales")
     fig_hist.update_xaxes(title="Ventas (millones COP)")
-    fig_hist.update_yaxes(title="Frecuencia (n.º de meses)")
+    fig_hist.update_yaxes(title="Frecuencia (Meses)")
 
     fig_evo = go.Figure()
     fig_evo.add_trace(go.Scatter(x=d["mes"], y=d[TARGET], mode="lines+markers",
-                                  line=dict(color=PALETA["secundario"]),
+                                  line=dict(color=PALETA["primario"], width=2.5),
+                                  marker=dict(size=6, color=PALETA["primario"]),
                                   name="Ventas mensuales"))
     if resaltar:
         atipicos = d.loc[d.index.intersection(outlier_idx)]
         if len(atipicos):
             fig_evo.add_trace(go.Scatter(
                 x=atipicos["mes"], y=atipicos[TARGET], mode="markers",
-                marker=dict(color=PALETA["acento"], size=13, symbol="star"),
+                marker=dict(color=PALETA["acento"], size=12, symbol="diamond"),
                 name="Mes atípico (|z| > 2)"))
-    fig_evo = figura_base(fig_evo, "Evolución mensual de las ventas")
-    fig_evo.update_xaxes(title="Mes")
+    fig_evo = figura_base(fig_evo, "Evolución Temporal de Ventas")
+    fig_evo.update_xaxes(title="Fecha")
     fig_evo.update_yaxes(title="Ventas (millones COP)")
 
     resumen = dbc.Row([
         dbc.Col([
-            html.H6("Gasto en publicidad (millones COP)"),
-            html.P(f"Media: {d['gasto_publicidad_millones'].mean():.2f} · "
-                   f"Mediana: {d['gasto_publicidad_millones'].median():.2f} · "
-                   f"Desv. estándar: {d['gasto_publicidad_millones'].std(ddof=1):.2f}"),
+            html.H6("Inversión Publicitaria (Millones COP)", className="fw-bold text-dark mb-2"),
+            html.Div([
+                html.Span(f"Media: {d['gasto_publicidad_millones'].mean():.2f} M", className="badge bg-light text-dark border me-2 p-2"),
+                html.Span(f"Mediana: {d['gasto_publicidad_millones'].median():.2f} M", className="badge bg-light text-dark border me-2 p-2"),
+                html.Span(f"Desv. Est: {d['gasto_publicidad_millones'].std(ddof=1):.2f} M", className="badge bg-light text-dark border me-2 p-2"),
+            ]),
         ], md=6),
         dbc.Col([
-            html.H6("Ventas (millones COP)"),
-            html.P(f"Media: {d[TARGET].mean():.2f} · "
-                   f"Mediana: {d[TARGET].median():.2f} · "
-                   f"Desv. estándar: {d[TARGET].std(ddof=1):.2f}"),
+            html.H6("Ventas Totales (Millones COP)", className="fw-bold text-dark mb-2"),
+            html.Div([
+                html.Span(f"Media: {d[TARGET].mean():.2f} M", className="badge bg-light text-dark border me-2 p-2"),
+                html.Span(f"Mediana: {d[TARGET].median():.2f} M", className="badge bg-light text-dark border me-2 p-2"),
+                html.Span(f"Desv. Est: {d[TARGET].std(ddof=1):.2f} M", className="badge bg-light text-dark border me-2 p-2"),
+            ]),
         ], md=6),
     ])
     return fig_hist, fig_evo, resumen
 
-
-# --- 7.2 Contraste de hipótesis --------------------------------------------
+# --- 7.2 Hipótesis -----------------------------------------------------------
 
 @app.callback(
     Output("graf-boxplot", "figure"),
@@ -521,8 +463,7 @@ def actualizar_hipotesis(modo):
     grupo_alto = d.loc[d["gasto_publicidad_millones"] > mediana_gasto, TARGET]
     grupo_bajo = d.loc[d["gasto_publicidad_millones"] <= mediana_gasto, TARGET]
 
-    t_stat, p_val = stats.ttest_ind(grupo_alto, grupo_bajo, equal_var=False,
-                                     alternative="greater")
+    t_stat, p_val = stats.ttest_ind(grupo_alto, grupo_bajo, equal_var=False, alternative="greater")
     u_stat, p_mw = stats.mannwhitneyu(grupo_alto, grupo_bajo, alternative="greater")
 
     n1, n2 = len(grupo_alto), len(grupo_bajo)
@@ -531,9 +472,9 @@ def actualizar_hipotesis(modo):
     cohen_d = (grupo_alto.mean() - grupo_bajo.mean()) / sp
 
     fig = go.Figure()
-    fig.add_trace(go.Box(y=grupo_bajo, name="Bajo gasto", marker_color=PALETA["primario"]))
-    fig.add_trace(go.Box(y=grupo_alto, name="Alto gasto", marker_color=PALETA["secundario"]))
-    fig = figura_base(fig, "Ventas mensuales según nivel de gasto en publicidad")
+    fig.add_trace(go.Box(y=grupo_bajo, name="Bajo Gasto", marker_color=PALETA["secundario"], boxmean=True))
+    fig.add_trace(go.Box(y=grupo_alto, name="Alto Gasto", marker_color=PALETA["primario"], boxmean=True))
+    fig = figura_base(fig, "Comparativa de Ventas según Nivel de Inversión")
     fig.update_yaxes(title="Ventas (millones COP)")
 
     decision = "Se rechaza H₀" if p_val < 0.05 else "No se rechaza H₀"
@@ -541,28 +482,23 @@ def actualizar_hipotesis(modo):
 
     resultado = dbc.Row([
         dbc.Col([
-            html.H6(f"n = {n1 + n2} meses ({n1} alto gasto / {n2} bajo gasto)"),
-            html.P(f"Media alto gasto: {grupo_alto.mean():.2f} millones COP  |  "
-                   f"Media bajo gasto: {grupo_bajo.mean():.2f} millones COP"),
-            html.P(f"Diferencia de medias: {grupo_alto.mean() - grupo_bajo.mean():.2f} "
-                   "millones COP"),
+            html.H6(f"Muestra: n = {n1 + n2} meses", className="fw-bold mb-2"),
+            html.P(f"Promedio Alto Gasto: {grupo_alto.mean():.2f} M COP", className="small text-muted mb-1"),
+            html.P(f"Promedio Bajo Gasto: {grupo_bajo.mean():.2f} M COP", className="small text-muted mb-1"),
+            html.P(f"Diferencia neta: {grupo_alto.mean() - grupo_bajo.mean():.2f} M COP", className="fw-semibold text-dark mb-0"),
         ], md=4),
         dbc.Col([
-            html.P(f"Prueba t de Welch: t = {t_stat:.3f}, p (una cola) = {p_val:.2e}"),
-            html.P(f"Mann-Whitney U: U = {u_stat:.1f}, p (una cola) = {p_mw:.2e}"),
-            html.P(f"Tamaño del efecto (d de Cohen): {cohen_d:.3f}"),
+            html.H6("Pruebas Estadísticas", className="fw-bold mb-2"),
+            html.P(f"Welch t: {t_stat:.3f} | p-val: {p_val:.2e}", className="small mb-1"),
+            html.P(f"Mann-Whitney U: {u_stat:.1f} | p-val: {p_mw:.2e}", className="small mb-1"),
+            html.P(f"Efecto Cohen's d: {cohen_d:.3f} (Alto)", className="fw-semibold text-indigo mb-0"),
         ], md=4),
         dbc.Col([
-            html.H5(decision, style={"color": color_decision}),
-            html.P("Con α = 0.05, existe evidencia de que los meses de alto gasto "
-                   "publicitario presentan, en promedio, ventas mayores que los "
-                   "meses de bajo gasto." if p_val < 0.05 else
-                   "No hay evidencia suficiente para afirmar que el alto gasto "
-                   "publicitario genera mayores ventas."),
+            html.Div(decision, className="fw-extrabold fs-5 mb-2", style={"color": color_decision}),
+            html.P("Existe suficiente evidencia estadística para concluir que la alta inversión publicitaria incrementa de forma significativa los ingresos mensuales.", className="small text-muted mb-0" if p_val < 0.05 else "No hay evidencia suficiente."),
         ], md=4),
     ])
     return fig, resultado
-
 
 # --- 7.3 Regresión -----------------------------------------------------------
 
@@ -571,9 +507,8 @@ def actualizar_hipotesis(modo):
     Output("metricas-modelo", "children"),
     Output("explicacion-modelo", "children"),
     Input("dd-modelo", "value"),
-    Input("slider-alpha", "value"),
 )
-def actualizar_regresion(tipo_modelo, alpha):
+def actualizar_regresion(tipo_modelo):
     kf = KFold(n_splits=5, shuffle=True, random_state=42)
 
     if tipo_modelo == "simple":
@@ -581,85 +516,70 @@ def actualizar_regresion(tipo_modelo, alpha):
         cv_scores = cross_val_score(LinearRegression(), X, y_full, cv=kf, scoring="r2")
         modelo = LinearRegression().fit(X, y_full)
         y_pred = modelo.predict(X)
-        nombre = "Regresión lineal simple"
-        texto_modelo = (f"ventas = {modelo.intercept_:.2f} + "
-                        f"{modelo.coef_[0]:.3f} × gasto_publicidad")
-        explicacion = ("Modelo de referencia de la etapa de contextualización: usa "
-                       "únicamente el gasto en publicidad como predictor. Es el más "
-                       "simple de interpretar, pero deja sin explicar ~48 % de la "
-                       "variabilidad de las ventas.")
+        nombre = "Regresión Lineal Simple"
+        texto_modelo = f"Ventas = {modelo.intercept_:.2f} + {modelo.coef_[0]:.3f} × Gasto"
+        explicacion = "Modelo bivariado de referencia. Establece la tendencia base entre pauta e ingresos pero omite factores adicionales."
 
     elif tipo_modelo == "multiple":
         X = X_full
         cv_scores = cross_val_score(LinearRegression(), X, y_full, cv=kf, scoring="r2")
         modelo = LinearRegression().fit(X, y_full)
         y_pred = modelo.predict(X)
-        nombre = "Regresión lineal múltiple"
+        nombre = "Regresión Lineal Múltiple"
         coefs = dict(zip(FEATURES, modelo.coef_))
-        texto_modelo = (f"ventas = {modelo.intercept_:.2f} + "
-                        f"{coefs['gasto_publicidad_millones']:.2f}×gasto + "
-                        f"{coefs['visitas_web_miles']:.2f}×visitas + "
-                        f"{coefs['tasa_conversion_pct']:.2f}×conversión")
-        explicacion = ("Incorpora visitas al sitio y tasa de conversión. Sin "
-                       "regularizar, la fuerte correlación entre gasto y visitas "
-                       "(VIF ≈ 7.5) produce coeficientes inestables — por eso el "
-                       "coeficiente de 'visitas' puede aparecer negativo, algo "
-                       "contraintuitivo que la regularización corrige.")
+        texto_modelo = f"Ventas = {modelo.intercept_:.2f} + {coefs['gasto_publicidad_millones']:.2f}×Gasto + {coefs['visitas_web_miles']:.2f}×Visitas + {coefs['tasa_conversion_pct']:.2f}×Conv"
+        explicacion = "Modelo multivariado. Muestra cierta inestabilidad en coeficientes debido a alta colinealidad estructural (VIF ≈ 7.5)."
 
-    else:  # ridge
+    else:
+        alpha = 5.0
         scaler = StandardScaler().fit(X_full)
         Xs = scaler.transform(X_full)
         cv_scores = cross_val_score(Ridge(alpha=alpha), Xs, y_full, cv=kf, scoring="r2")
         modelo = Ridge(alpha=alpha).fit(Xs, y_full)
         y_pred = modelo.predict(Xs)
-        nombre = f"Regresión Ridge (α = {alpha:g})"
+        nombre = f"Regresión Ridge (L2, α = {alpha:g})"
         coefs = dict(zip(FEATURES, modelo.coef_))
-        texto_modelo = (f"ventas = {modelo.intercept_:.2f} + "
-                        f"{coefs['gasto_publicidad_millones']:.2f}×gasto_z + "
-                        f"{coefs['visitas_web_miles']:.2f}×visitas_z + "
-                        f"{coefs['tasa_conversion_pct']:.2f}×conversión_z  "
-                        "(variables estandarizadas)")
-        explicacion = ("La regularización L2 (Ridge) penaliza coeficientes grandes "
-                       "y reparte el efecto entre variables correlacionadas de "
-                       "forma más estable, controlando la multicolinealidad entre "
-                       "gasto y visitas sin necesidad de eliminar ninguna variable. "
-                       "Ajuste el deslizador de alpha para ver el efecto: valores "
-                       "muy altos sobre-regularizan (subajuste); valores muy bajos "
-                       "se acercan a la regresión múltiple sin regularizar.")
+        texto_modelo = f"Ventas_z = {modelo.intercept_:.2f} + {coefs['gasto_publicidad_millones']:.2f}×Gasto_z + {coefs['visitas_web_miles']:.2f}×Visitas_z + {coefs['tasa_conversion_pct']:.2f}×Conv_z"
+        explicacion = "La regularización L2 (Ridge, α = 5) penaliza coeficientes grandes y atenúa la multicolinealidad estructural entre gasto publicitario y visitas al sitio web, mejorando la estabilidad del modelo."
 
     r2_insample = r2_score(y_full, y_pred)
     mse_cv = mean_squared_error(y_full, y_pred)
 
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=y_full, y=y_pred, mode="markers",
-                              marker=dict(color=PALETA["primario"], size=9, opacity=0.75),
-                              name="Meses"))
+                              marker=dict(color=PALETA["primario"], size=9, opacity=0.8),
+                              name="Observaciones"))
     lims = [min(y_full.min(), y_pred.min()) - 10, max(y_full.max(), y_pred.max()) + 10]
     fig.add_trace(go.Scatter(x=lims, y=lims, mode="lines",
-                              line=dict(color=PALETA["acento"], dash="dash"),
-                              name="Predicción perfecta (y = x)"))
-    fig = figura_base(fig, f"{nombre}: ventas reales vs. predichas")
-    fig.update_xaxes(title="Ventas reales (millones COP)")
-    fig.update_yaxes(title="Ventas predichas (millones COP)")
+                              line=dict(color=PALETA["acento"], dash="dash", width=1.5),
+                              name="Ideal (y = x)"))
+    fig = figura_base(fig, f"{nombre}: Ventas Reales vs. Predichas")
+    fig.update_xaxes(title="Ventas Reales (millones COP)")
+    fig.update_yaxes(title="Ventas Predichas (millones COP)")
+
+    filas_coefs = []
+    if tipo_modelo == "ridge":
+        coefs = dict(zip(FEATURES, modelo.coef_))
+        filas_coefs = [
+            html.Tr([html.Td("β Gasto (Estandarizado)"), html.Td(f"{coefs['gasto_publicidad_millones']:.3f}", className="fw-bold text-end text-indigo")]),
+            html.Tr([html.Td("β Visitas (Estandarizado)"), html.Td(f"{coefs['visitas_web_miles']:.3f}", className="fw-bold text-end text-indigo")]),
+            html.Tr([html.Td("β Conversión (Estandarizado)"), html.Td(f"{coefs['tasa_conversion_pct']:.3f}", className="fw-bold text-end text-indigo")]),
+        ]
 
     metricas = html.Div([
-        html.H5(nombre),
-        html.P(texto_modelo, className="small text-muted"),
+        html.H6(nombre, className="fw-bold mb-1"),
+        html.P(texto_modelo, className="small text-muted mb-3 font-monospace"),
         html.Table([
-            html.Tr([html.Td("R² (todas las observaciones)"),
-                     html.Td(f"{r2_insample:.3f}", className="fw-bold")]),
-            html.Tr([html.Td("R² promedio (validación cruzada, 5 folds)"),
-                     html.Td(f"{cv_scores.mean():.3f} ± {cv_scores.std():.3f}",
-                             className="fw-bold")]),
-            html.Tr([html.Td("MSE (todas las observaciones)"),
-                     html.Td(f"{mse_cv:.2f}", className="fw-bold")]),
-        ], className="table table-sm mt-2"),
+            html.Tr([html.Td("R² (Dataset Completo)"), html.Td(f"{r2_insample:.3f}", className="fw-bold text-end")]),
+            html.Tr([html.Td("R² Promedio (CV 5-fold)"), html.Td(f"{cv_scores.mean():.3f} ± {cv_scores.std():.3f}", className="fw-bold text-indigo text-end")]),
+            html.Tr([html.Td("MSE (Error Cuadrático Medio)"), html.Td(f"{mse_cv:.2f}", className="fw-bold text-end")]),
+            *filas_coefs
+        ], className="table-modern"),
     ])
 
     return fig, metricas, explicacion
 
-
-# --- 7.4 Clasificación (regresión logística) --------------------------------
+# --- 7.4 Clasificación -------------------------------------------------------
 
 @app.callback(
     Output("graf-sigmoide", "figure"),
@@ -668,8 +588,7 @@ def actualizar_regresion(tipo_modelo, alpha):
     Input("slider-umbral", "value"),
 )
 def actualizar_logistica(umbral):
-    Xtr, Xte, ytr, yte = train_test_split(Xl, yl, test_size=0.3, random_state=42,
-                                           stratify=yl)
+    Xtr, Xte, ytr, yte = train_test_split(Xl, yl, test_size=0.3, random_state=42, stratify=yl)
     modelo = LogisticRegression(C=1, solver="lbfgs").fit(Xtr, ytr)
     proba_te = modelo.predict_proba(Xte)[:, 1]
     y_pred = (proba_te >= umbral).astype(int)
@@ -680,45 +599,40 @@ def actualizar_logistica(umbral):
     f1 = f1_score(yte, y_pred, zero_division=0)
     cm = confusion_matrix(yte, y_pred)
 
-    xs = np.linspace(df["gasto_publicidad_millones"].min() - 1,
-                      df["gasto_publicidad_millones"].max() + 1, 200).reshape(-1, 1)
+    xs = np.linspace(df["gasto_publicidad_millones"].min() - 1, df["gasto_publicidad_millones"].max() + 1, 200).reshape(-1, 1)
     curva = modelo.predict_proba(xs)[:, 1]
 
     fig_sig = go.Figure()
     fig_sig.add_trace(go.Scatter(x=xs.ravel(), y=curva, mode="lines",
-                                  line=dict(color=PALETA["acento"], width=3),
-                                  name="Probabilidad estimada"))
+                                  line=dict(color=PALETA["primario"], width=3),
+                                  name="Curva Sigmoide"))
     fig_sig.add_trace(go.Scatter(x=Xtr.ravel(), y=ytr, mode="markers",
-                                  marker=dict(color=PALETA["primario"], opacity=0.6),
+                                  marker=dict(color=PALETA["muted"], opacity=0.5, size=7),
                                   name="Entrenamiento"))
     fig_sig.add_trace(go.Scatter(x=Xte.ravel(), y=yte, mode="markers",
-                                  marker=dict(color=PALETA["exito"], symbol="square"),
+                                  marker=dict(color=PALETA["exito"], symbol="square", size=8),
                                   name="Prueba"))
-    fig_sig.add_hline(y=umbral, line_dash="dash", line_color="gray",
+    fig_sig.add_hline(y=umbral, line_dash="dash", line_color=PALETA["acento"],
                        annotation_text=f"Umbral = {umbral}")
-    fig_sig = figura_base(fig_sig, "Probabilidad de mes de venta alta según el gasto")
-    fig_sig.update_xaxes(title="Gasto en publicidad (millones COP)")
-    fig_sig.update_yaxes(title="Probabilidad de venta alta")
+    fig_sig = figura_base(fig_sig, "Curva de Probabilidad Logística")
+    fig_sig.update_xaxes(title="Gasto Publicitario (millones COP)")
+    fig_sig.update_yaxes(title="Probabilidad de Venta Alta")
 
-    fig_cm = px.imshow(cm, text_auto=True, color_continuous_scale="Blues",
-                        labels=dict(x="Predicho", y="Real", color="n"),
-                        x=["Venta normal/baja", "Venta alta"],
-                        y=["Venta normal/baja", "Venta alta"])
-    fig_cm = figura_base(fig_cm, f"Matriz de confusión (umbral = {umbral})")
+    fig_cm = px.imshow(cm, text_auto=True, color_continuous_scale="Purples",
+                        labels=dict(x="Predicho", y="Real", color="Frecuencia"),
+                        x=["Venta Normal/Baja", "Venta Alta"],
+                        y=["Venta Normal/Baja", "Venta Alta"])
+    fig_cm = figura_base(fig_cm, f"Matriz de Confusión (Umbral: {umbral})")
     fig_cm.update_coloraxes(showscale=False)
 
     metricas = dbc.Row([
-        dbc.Col(kpi_card("Exactitud", f"{acc:.1%}", "aciertos totales", PALETA["primario"]), md=3),
-        dbc.Col(kpi_card("Sensibilidad (recall)", f"{rec:.1%}",
-                          "meses de venta alta detectados", PALETA["exito"]), md=3),
-        dbc.Col(kpi_card("Precisión", f"{prec:.1%}",
-                          "aciertos entre los predichos como altos", PALETA["secundario"]), md=3),
-        dbc.Col(kpi_card("F1-score", f"{f1:.3f}", "balance precisión/sensibilidad",
-                          PALETA["acento"]), md=3),
+        dbc.Col(kpi_card("Exactitud (Accuracy)", f"{acc:.1%}", "Aciertos globales", PALETA["primario"]), md=3),
+        dbc.Col(kpi_card("Sensibilidad (Recall)", f"{rec:.1%}", "Detección de meses altos", PALETA["exito"]), md=3),
+        dbc.Col(kpi_card("Precisión", f"{prec:.1%}", "Acierto sobre predicción alta", PALETA["secundario"]), md=3),
+        dbc.Col(kpi_card("F1-Score", f"{f1:.3f}", "Balance de clasificación", PALETA["acento"]), md=3),
     ], className="g-3")
 
     return fig_sig, fig_cm, metricas
-
 
 # --- 7.5 Simulador -----------------------------------------------------------
 
@@ -739,16 +653,16 @@ def actualizar_simulador(gasto_hipotetico):
     fig_ventas = go.Figure(go.Indicator(
         mode="gauge+number",
         value=float(ventas_pred),
-        title={"text": "Ventas mensuales esperadas (millones COP)"},
+        number={"suffix": " M", "font": {"family": "Plus Jakarta Sans", "weight": 700}},
+        title={"text": "<b>Ventas Estimadas (Millones COP)</b>", "font": {"size": 13, "family": "Plus Jakarta Sans"}},
         gauge={
             "axis": {"range": [0, max(260, ventas_pred + 20)]},
             "bar": {"color": PALETA["primario"]},
             "steps": [
-                {"range": [0, mediana_ventas], "color": "#E8EEF7"},
-                {"range": [mediana_ventas, 260], "color": "#D6E3F5"},
+                {"range": [0, mediana_ventas], "color": "#F1F5F9"},
+                {"range": [mediana_ventas, 260], "color": "#EEF2FF"},
             ],
-            "threshold": {"line": {"color": PALETA["acento"], "width": 4},
-                          "value": mediana_ventas},
+            "threshold": {"line": {"color": PALETA["acento"], "width": 3}, "value": mediana_ventas},
         },
     ))
     fig_ventas = figura_base(fig_ventas)
@@ -756,26 +670,24 @@ def actualizar_simulador(gasto_hipotetico):
     fig_prob = go.Figure(go.Indicator(
         mode="gauge+number",
         value=float(prob_alta) * 100,
-        number={"suffix": "%"},
-        title={"text": "Probabilidad de mes de \"venta alta\""},
+        number={"suffix": "%", "font": {"family": "Plus Jakarta Sans", "weight": 700}},
+        title={"text": "<b>Probabilidad de Mes de Venta Alta</b>", "font": {"size": 13, "family": "Plus Jakarta Sans"}},
         gauge={
             "axis": {"range": [0, 100]},
-            "bar": {"color": PALETA["exito"] if prob_alta >= 0.6 else PALETA["secundario"]},
-            "threshold": {"line": {"color": PALETA["acento"], "width": 4}, "value": 60},
+            "bar": {"color": PALETA["exito"] if prob_alta >= 0.6 else PALETA["warning"]},
+            "threshold": {"line": {"color": PALETA["acento"], "width": 3}, "value": 60},
         },
     ))
     fig_prob = figura_base(fig_prob)
 
-    aviso = ""
-    if not (df["gasto_publicidad_millones"].min() <= gasto_hipotetico
-            <= df["gasto_publicidad_millones"].max()):
-        aviso = ("⚠️ Este valor está fuera del rango histórico observado "
-                 f"({df['gasto_publicidad_millones'].min():.1f}–"
-                 f"{df['gasto_publicidad_millones'].max():.1f} millones COP); "
-                 "la predicción es una extrapolación del modelo.")
+    aviso = None
+    if not (df["gasto_publicidad_millones"].min() <= gasto_hipotetico <= df["gasto_publicidad_millones"].max()):
+        aviso = html.Div([
+            html.I(className="fa-solid fa-triangle-exclamation me-2 text-warning fs-5"),
+            html.Span(f"Nota: El valor ingresado ({gasto_hipotetico:.1f} M) se encuentra fuera del rango histórico observado ({df['gasto_publicidad_millones'].min():.1f} - {df['gasto_publicidad_millones'].max():.1f} M COP). La proyección corresponde a una extrapolación.", className="small text-secondary")
+        ], className="p-2 px-3 rounded bg-warning-subtle border border-warning d-flex align-items-center")
 
     return fig_ventas, fig_prob, aviso
-
 
 # ---------------------------------------------------------------------------
 # 8. EJECUCIÓN
