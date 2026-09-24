@@ -7,8 +7,6 @@ Autora: María Fernanda Herrera Contreras
 Docente: William Eduardo Clavijo Bohorquez
 """
 
-import os
-import socket
 import numpy as np
 import pandas as pd
 from scipy import stats
@@ -737,25 +735,4 @@ def actualizar_simulador(gasto_hipotetico):
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8050))
-
-    # Detectar la IP local de esta computadora en la red Wi-Fi
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        ip_local = s.getsockname()[0]
-        s.close()
-    except Exception:
-        ip_local = "127.0.0.1"
-
-    print("\n" + "=" * 65)
-    print("🚀 DASHBOARD INTERACTIVO INICIADO")
-    print("=" * 65)
-    print(f"💻 Acceso Local (esta PC):          http://127.0.0.1:{port}")
-    print(f"📱 Acceso Celular/Wi-Fi (Misma red): http://{ip_local}:{port}")
-    print("☁️  Acceso Nube (Binder/Servidor):   host='0.0.0.0' habilitado")
-    print("=" * 65 + "\n")
-
-    # Desactivar debug para evitar 500 Internal Server Error con el proxy de Binder
-    debug_mode = os.environ.get("DASH_DEBUG", "False").lower() == "true"
-    app.run(host="0.0.0.0", port=port, debug=debug_mode)
+    app.run(debug=True)
