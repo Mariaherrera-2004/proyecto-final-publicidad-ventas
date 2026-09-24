@@ -201,7 +201,7 @@ tab_exploracion = dbc.Container([
         dbc.Col([
             html.Div([
                 html.Label("Rango de meses a analizar:", className="fw-semibold mb-0 me-2"),
-                html.Span(id="badge-rango-fechas", className="badge bg-indigo-subtle text-indigo border px-2 py-1")
+                html.Span(id="badge-rango-fechas", className="badge px-3 py-1 rounded-pill shadow-sm", style={"backgroundColor": "#6366F1", "color": "#FFFFFF", "fontSize": "0.85rem", "fontWeight": "600"})
             ], className="d-flex align-items-center mb-2"),
             dcc.RangeSlider(
                 id="rango-fechas",
