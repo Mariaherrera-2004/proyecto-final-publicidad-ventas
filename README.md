@@ -21,17 +21,52 @@ proyecto/
 └── README.md
 ```
 
-## 1. Ejecutar el dashboard en su computador
+## 1. Ejecutar el dashboard localmente (Paso a paso)
 
-```bash
-cd proyecto
+Para ejecutar este proyecto en tu computadora, abre la terminal (PowerShell o CMD en Windows) y sigue estos pasos:
+
+### Paso 1: Ubicarse en la carpeta del proyecto
+Asegúrate de estar dentro de la carpeta donde están los archivos `app.py` y `requirements.txt`.
+- Si descargaste o clonaste el repositorio de GitHub, entra a la carpeta con:
+  ```powershell
+  cd proyecto-final-publicidad-ventas
+  ```
+  *(Nota: Si ya abriste la terminal directamente dentro de la carpeta del proyecto, no necesitas hacer `cd`).*
+
+### Paso 2: Crear el entorno virtual de Python
+Crea un entorno aislado para instalar las librerías necesarias sin afectar tu sistema:
+```powershell
 python -m venv venv
-source venv/bin/activate        # En Windows: venv\Scripts\activate
+```
+
+### Paso 3: Activar el entorno virtual
+- **En Windows (PowerShell / CMD - Por defecto):**
+  ```powershell
+  .\venv\Scripts\activate
+  ```
+  *(Verás que al inicio de tu línea de comandos aparece `(venv)` indicando que está activo).*
+- **En macOS / Linux:**
+  ```bash
+  source venv/bin/activate
+  ```
+
+### Paso 4: Instalar las dependencias
+Instala todas las librerías necesarias (`dash`, `pandas`, `scikit-learn`, `plotly`, etc.):
+```powershell
 pip install -r requirements.txt
+```
+
+### Paso 5: Iniciar el dashboard
+Ejecuta la aplicación principal:
+```powershell
 python app.py
 ```
 
-Abra el navegador en **http://127.0.0.1:8050**
+### Paso 6: Abrir en el navegador
+Abre tu navegador web e ingresa a la siguiente dirección:
+👉 **http://127.0.0.1:8050**
+
+---
 
 ## 2. Subir el proyecto a GitHub
 
