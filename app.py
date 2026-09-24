@@ -756,4 +756,6 @@ if __name__ == "__main__":
     print("☁️  Acceso Nube (Binder/Servidor):   host='0.0.0.0' habilitado")
     print("=" * 65 + "\n")
 
-    app.run(host="0.0.0.0", port=port, debug=True)
+    # Desactivar debug para evitar 500 Internal Server Error con el proxy de Binder
+    debug_mode = os.environ.get("DASH_DEBUG", "False").lower() == "true"
+    app.run(host="0.0.0.0", port=port, debug=debug_mode)
