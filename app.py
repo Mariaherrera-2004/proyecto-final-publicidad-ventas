@@ -114,8 +114,17 @@ def figura_base(fig, titulo=None):
 # 4. INICIALIZACIÓN DE LA APP CON RECURSOS ESTÉTICOS
 # ---------------------------------------------------------------------------
 
+# Configuración de prefijo para proxy de Binder / JupyterHub o ejecución local
+jupyterhub_prefix = os.environ.get("JUPYTERHUB_SERVICE_PREFIX", "")
+if jupyterhub_prefix:
+    requests_prefix = f"{jupyterhub_prefix.rstrip('/')}/proxy/8050/"
+else:
+    requests_prefix = "/"
+
 app = dash.Dash(
     __name__,
+    requests_pathname_prefix=requests_prefix,
+    routes_pathname_prefix="/",
     external_stylesheets=[
         dbc.themes.BOOTSTRAP,
         "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap",
