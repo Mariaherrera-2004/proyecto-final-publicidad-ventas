@@ -7,6 +7,7 @@ Autora: María Fernanda Herrera Contreras
 Docente: William Eduardo Clavijo Bohorquez
 """
 
+import os
 import numpy as np
 import pandas as pd
 from scipy import stats
@@ -29,7 +30,9 @@ from sklearn.preprocessing import StandardScaler
 # 1. CARGA Y PREPARACIÓN DE DATOS
 # ---------------------------------------------------------------------------
 
-df = pd.read_csv("data/ventas_ecommerce.csv", parse_dates=["mes"])
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_PATH = os.path.join(BASE_DIR, "data", "ventas_ecommerce.csv")
+df = pd.read_csv(DATA_PATH, parse_dates=["mes"])
 df = df.sort_values("mes").reset_index(drop=True)
 
 FEATURES = ["gasto_publicidad_millones", "visitas_web_miles", "tasa_conversion_pct"]
@@ -735,4 +738,4 @@ def actualizar_simulador(gasto_hipotetico):
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=8050, debug=False)
