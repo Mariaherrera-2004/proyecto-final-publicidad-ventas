@@ -199,12 +199,22 @@ tab_contexto = dbc.Container([
 tab_exploracion = dbc.Container([
     dbc.Row([
         dbc.Col([
-            html.Label("Rango de meses a analizar", className="fw-semibold mb-2"),
+            html.Div([
+                html.Label("Rango de meses a analizar:", className="fw-semibold mb-0 me-2"),
+                html.Span(id="badge-rango-fechas", className="badge bg-indigo-subtle text-indigo border px-2 py-1")
+            ], className="d-flex align-items-center mb-2"),
             dcc.RangeSlider(
                 id="rango-fechas",
                 min=0, max=len(df) - 1, step=1,
                 value=[0, len(df) - 1],
-                marks={i: d.strftime("%Y") for i, d in enumerate(df["mes"]) if d.month == 1},
+                marks={
+                    0: "Ene 2021",
+                    12: "Ene 2022",
+                    24: "Ene 2023",
+                    36: "Ene 2024",
+                    48: "Ene 2025",
+                    59: "Dic 2025"
+                },
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
         ], md=8),
@@ -352,18 +362,44 @@ tab_simulador = dbc.Container([
 
 tab_conclusiones = dbc.Container([
     dbc.Row([
+        # Módulo 1: Hallazgos Estadísticos
         dbc.Col(dbc.Card(dbc.CardBody([
-            html.H5("Principales Hallazgos Estadísticos", className="card-title-modern mb-3"),
+            html.Div([
+                html.I(className="fa-solid fa-chart-pie me-2 fs-5", style={"color": PALETA["primario"]}),
+                html.Span("Principales Hallazgos Estadísticos", className="card-title-modern")
+            ], className="d-flex align-items-center mb-3 pb-2 border-bottom"),
             html.Ul([
-                html.Li("Relación altamente significativa entre inversión publicitaria e ingresos por ventas (Welch p ≈ 1.18×10⁻⁸; Mann-Whitney p ≈ 2.29×10⁻⁹) con tamaño de efecto d de Cohen = 1.68 (efecto alto).", className="mb-2 text-secondary"),
-                html.Li("El modelo lineal simple explica el 51.5% de la variabilidad. El modelo múltiple evaluado mediante Validación Cruzada 5-fold alcanza R² ≈ 0.45, incrementando a R² ≈ 0.48 al incorporar regularización Ridge (α ≈ 5), corrigiendo la multicolinealidad estructural (VIF ≈ 7.5).", className="mb-2 text-secondary"),
-                html.Li("La Regresión Logística con umbral óptimo (0.60) alcanza una exactitud del 94.4% y sensibilidad del 100% en la detección de meses de alto rendimiento comercial.", className="mb-2 text-secondary"),
-            ], className="ps-3 mb-4"),
-            
-            html.H5("Recomendaciones para la Toma de Decisiones", className="card-title-modern mb-3"),
-            html.P("La evidencia cuantitativa valida la rentabilidad marginal del canal digital: cada millón adicional invertido proyecta un incremento estimado de 3.4 a 3.9 millones COP en ventas brutas. Se aconseja utilizar la estimación con regularización Ridge como estándar corporativo para la asignación de presupuesto.", className="text-secondary leading-relaxed mb-0"),
-        ])), md=12),
-    ]),
+                html.Li([
+                    html.B("Impacto en Ventas: "),
+                    "Existe una relación altamente significativa entre inversión publicitaria e ingresos (Welch p ≈ 1.18×10⁻⁸; Mann-Whitney p ≈ 2.29×10⁻⁹) con un tamaño de efecto grande (Cohen's d = 1.68)."
+                ], className="mb-3 text-secondary small"),
+                html.Li([
+                    html.B("Modelos de Regresión: "),
+                    "El modelo lineal simple explica el 51.5% de la variabilidad. El modelo múltiple evaluado con Validación Cruzada (5-fold) alcanza R² ≈ 0.45 y sube a R² ≈ 0.48 con regularización Ridge (α = 5), corrigiendo la multicolinealidad estructural (VIF ≈ 7.5)."
+                ], className="mb-3 text-secondary small"),
+                html.Li([
+                    html.B("Clasificación Logística: "),
+                    "Con un umbral óptimo (0.60), la regresión logística predice los meses de alta venta con 94.4% de exactitud y 100% de sensibilidad."
+                ], className="mb-0 text-secondary small"),
+            ], className="ps-3 mb-0"),
+        ]), className="h-100"), md=6),
+
+        # Módulo 2: Recomendaciones Estratégicas
+        dbc.Col(dbc.Card(dbc.CardBody([
+            html.Div([
+                html.I(className="fa-solid fa-lightbulb me-2 fs-5", style={"color": PALETA["exito"]}),
+                html.Span("Recomendaciones para Decisiones", className="card-title-modern")
+            ], className="d-flex align-items-center mb-3 pb-2 border-bottom"),
+            html.Div([
+                html.H6("Retorno Estimado de Inversión", className="fw-bold text-dark mb-2"),
+                html.P("La evidencia cuantitativa valida la rentabilidad del canal digital: cada millón COP adicional invertido en publicidad proyecta un incremento estimado entre 3.4 y 3.9 millones COP en ventas brutas.", className="text-secondary small mb-0"),
+            ], className="mb-3 p-3 bg-light rounded border"),
+            html.Div([
+                html.H6("Estándar de Modelación Corporativa", className="fw-bold text-dark mb-2"),
+                html.P("Se aconseja utilizar la regularización Ridge con validación cruzada como norma corporativa para la asignación presupuestal, asegurando proyecciones estables ante la volatilidad del mercado.", className="text-secondary small mb-0"),
+            ], className="p-3 bg-light rounded border"),
+        ]), className="h-100"), md=6),
+    ], className="g-3 d-flex align-items-stretch"),
 ], fluid=True, className="py-2")
 
 # ---------------------------------------------------------------------------
@@ -400,6 +436,7 @@ app.layout = html.Div([
     Output("graf-histograma", "figure"),
     Output("graf-evolucion", "figure"),
     Output("resumen-eda", "children"),
+    Output("badge-rango-fechas", "children"),
     Input("rango-fechas", "value"),
     Input("chk-outliers", "value"),
 )
@@ -407,6 +444,10 @@ def actualizar_eda(rango, chk):
     i0, i1 = rango
     d = df.iloc[i0:i1 + 1].copy()
     resaltar = "on" in (chk or [])
+
+    fecha_ini = d["mes"].min().strftime("%b %Y").capitalize()
+    fecha_fin = d["mes"].max().strftime("%b %Y").capitalize()
+    texto_badge = f"{fecha_ini} – {fecha_fin} ({len(d)} meses)"
 
     fig_hist = px.histogram(d, x=TARGET, nbins=12, color_discrete_sequence=[PALETA["primario"]])
     fig_hist.update_traces(marker_line_color="white", marker_line_width=1.5, opacity=0.9)
@@ -448,7 +489,7 @@ def actualizar_eda(rango, chk):
             ]),
         ], md=6),
     ])
-    return fig_hist, fig_evo, resumen
+    return fig_hist, fig_evo, resumen, texto_badge
 
 # --- 7.2 Hipótesis -----------------------------------------------------------
 
