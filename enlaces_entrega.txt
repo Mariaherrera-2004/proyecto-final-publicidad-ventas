@@ -1,9 +1,9 @@
 Proyecto Final - Etapa de transferencia
-Programación para Ciencia de Datos II - U Compensar
-María Fernanda Herrera Contreras
+Programacion para Ciencia de Datos II - U Compensar
+Maria Fernanda Herrera Contreras
 
 1. Repositorio en GitHub:
 https://github.com/Mariaherrera-2004/proyecto-final-publicidad-ventas.git
 
-2. Dashboard en Binder:
-https://mybinder.org/v2/gh/Mariaherrera-2004/proyecto-final-publicidad-ventas/main
+2. Dashboard en Binder (Abre directamente el cuaderno del dashboard):
+https://mybinder.org/v2/gh/Mariaherrera-2004/proyecto-final-publicidad-ventas/main?labpath=dashboard_binder.ipynb
